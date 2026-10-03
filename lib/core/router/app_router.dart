@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
-import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/chat/presentation/screens/chat_list_screen.dart';
 import '../../features/chat/presentation/screens/chat_thread_screen.dart';
 import '../../features/community/presentation/screens/community_screen.dart';
@@ -14,9 +13,13 @@ import '../../features/players/presentation/screens/player_profile_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/sessions/presentation/screens/create_session_screen.dart';
 import '../../features/sessions/presentation/screens/session_detail_screen.dart';
-
+import '../../features/onboarding/presentation/screens/intro_carousel_screen.dart';
+import '../../features/onboarding/presentation/screens/skill_level_screen.dart';
+import '../../features/onboarding/presentation/screens/availability_setup_screen.dart';
+import '../../features/onboarding/presentation/screens/location_setup_screen.dart';
+import '../../features/onboarding/presentation/screens/notifications_setup_screen.dart';
+import '../../features/onboarding/presentation/screens/photo_setup_screen.dart';
 abstract final class AppRoutes {
-  static const splash = '/splash';
   static const login = '/login';
   static const register = '/register';
   static const forgotPassword = '/forgot-password';
@@ -30,15 +33,18 @@ abstract final class AppRoutes {
   static const community = '/community';
   static const notifications = '/notifications';
   static const profile = '/profile';
+  static const intro = '/intro';
+  static const skillLevel = '/skill-level';
+  static const locationSetup = '/onboarding/location';
+  static const availabilitySetup = '/onboarding/availability';
+  static const photoSetup = '/onboarding/photo';
+  static const notificationsSetup = '/onboarding/notifications';
+
 }
 
 final appRouter = GoRouter(
-  initialLocation: AppRoutes.splash,
+  initialLocation: AppRoutes.login, // Sign-in is now the first screen
   routes: [
-    GoRoute(
-      path: AppRoutes.splash,
-      builder: (context, state) => const SplashScreen(),
-    ),
     GoRoute(
       path: AppRoutes.login,
       builder: (context, state) => const LoginScreen(),
@@ -93,6 +99,34 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.profile,
       builder: (context, state) => const ProfileScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.intro,
+      builder: (context, state) => const IntroCarouselScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.skillLevel,
+      builder: (context, state) => SkillLevelScreen(
+        selectedSports: state.extra is List<String>
+            ? state.extra as List<String>
+            : const [],
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.locationSetup,
+      builder: (context, state) => const LocationSetupScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.availabilitySetup,
+      builder: (context, state) => const AvailabilitySetupScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.photoSetup,
+      builder: (context, state) => const PhotoSetupScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.notificationsSetup,
+      builder: (context, state) => const NotificationsSetupScreen(),
     ),
   ],
 );
