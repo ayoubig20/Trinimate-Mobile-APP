@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -109,7 +110,7 @@ class _PhotoSetupScreenState extends State<PhotoSetupScreen> {
                       border: Border.all(color: AppColors.divider),
                       image: _imagePath != null
                           ? DecorationImage(
-                        image: NetworkImage(_imagePath!),
+                        image: FileImage(File(_imagePath!)),
                         fit: BoxFit.cover,
                       )
                           : null,
