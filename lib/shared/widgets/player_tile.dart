@@ -4,7 +4,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import 'player_avatar.dart';
 
-/// Row used in Discover: avatar, name, "Sport · Level · 2.5 km", Ping button.
 class PlayerTile extends StatelessWidget {
   const PlayerTile({
     super.key,
@@ -12,15 +11,19 @@ class PlayerTile extends StatelessWidget {
     required this.subtitle,
     this.onTap,
     this.onPing,
+    this.pinged = false,
   });
 
   final String name;
   final String subtitle;
   final VoidCallback? onTap;
   final VoidCallback? onPing;
+  final bool pinged;
 
   @override
   Widget build(BuildContext context) {
+    final pingColor =
+    pinged ? AppColors.textMuted : AppColors.primary;
     return Material(
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(6),
@@ -50,12 +53,15 @@ class PlayerTile extends StatelessWidget {
               TextButton(
                 onPressed: onPing,
                 style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primary,
+                  foregroundColor: pingColor,
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   shape: const StadiumBorder(),
-                  side: const BorderSide(color: AppColors.primary),
+                  side: BorderSide(color: pingColor),
                 ),
-                child: Text('PING', style: AppTextStyles.button(size: 12, color: AppColors.primary)),
+                child: Text(
+                  pinged ? 'UNPING' : 'PING',
+                  style: AppTextStyles.button(size: 12, color: pingColor),
+                ),
               ),
             ],
           ),

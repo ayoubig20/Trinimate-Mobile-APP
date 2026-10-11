@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../auth_controller.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -8,14 +9,14 @@ import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../../shared/widgets/secondary_button.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -29,13 +30,24 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+
+
   Future<void> _onLogin() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
-    await Future<void>.delayed(const Duration(seconds: 1)); // mock auth
+    final ok = await ref.read(authControllerProvider.notifier).login(
+      _emailController.text,
+      _passwordController.text,
+    );
     if (!mounted) return;
     setState(() => _loading = false);
-    context.go(AppRoutes.discover);
+    if (ok) {
+      context.go(AppRoutes.discover);
+    } else {
+      final error = ref.read(authControllerProvider).error ?? 'Login failed';
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
+    }
   }
 
   @override

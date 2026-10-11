@@ -3,7 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
-
+import '../onboarding_data.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -71,7 +71,14 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
     }
   }
 
-  void _onNext() => context.push(AppRoutes.availabilitySetup);
+  void _onNext() {
+    if (_position != null) {
+      OnboardingData.latitude = _position!.latitude;
+      OnboardingData.longitude = _position!.longitude;
+      OnboardingData.radiusKm = _radiusKm;
+    }
+    context.push(AppRoutes.availabilitySetup);
+  }
   void _onSkip() => context.push(AppRoutes.availabilitySetup);
 
   @override

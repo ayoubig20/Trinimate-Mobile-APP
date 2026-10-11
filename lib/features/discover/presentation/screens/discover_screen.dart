@@ -1,46 +1,50 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
-import '../../../../shared/widgets/bottom_nav_bar.dart';
+
+import '../../../../core/l10n/l10n.dart';
 import '../../../../core/mock/mock_data.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../shared/widgets/bottom_nav_bar.dart';
 import '../../../../shared/widgets/player_tile.dart';
 import '../../../../shared/widgets/tab_scaffold.dart';
+import '../discover_controller.dart';
 
-class DiscoverScreen extends StatefulWidget {
+class DiscoverScreen extends ConsumerStatefulWidget {
   const DiscoverScreen({super.key});
 
   @override
-  State<DiscoverScreen> createState() => _DiscoverScreenState();
+  ConsumerState<DiscoverScreen> createState() => _DiscoverScreenState();
 }
 
-class _DiscoverScreenState extends State<DiscoverScreen> {
+class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
   String _filter = 'All';
 
   static const _center = LatLng(30.4278, -9.5981);
-  static const _pinOffsets = [
-    LatLng(0.006, 0.004), LatLng(-0.004, 0.009), LatLng(0.009, -0.006),
-    LatLng(-0.008, -0.009), LatLng(0.002, 0.013), LatLng(-0.012, 0.003),
-  ];
 
   @override
   Widget build(BuildContext context) {
-    final players = _filter == 'All'
-        ? MockData.players
-        : MockData.players.where((p) => p.sport == _filter).toList();
+    final s = ref.watch(stringsProvider); // ← translations
+    final playersAsync = ref.watch(nearbyPlayersProvider(_filter));
+    final players = playersAsync.value ?? [];
+
 
     return TabScaffold(
       current: AppTab.discover,
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         children: [
+          // Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('DISCOVER', style: AppTextStyles.headline(size: 30)),
+              Text(s.discover, style: AppTextStyles.headline(size: 30)),
               GestureDetector(
                 onTap: () => context.push(AppRoutes.notifications),
                 child: Container(
@@ -57,6 +61,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             ],
           ),
           const SizedBox(height: 14),
+
+          // Map (mock pins — cosmetic)
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: SizedBox(
@@ -74,35 +80,35 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.trinimate',
                   ),
-                  MarkerLayer(
-                    markers: [
-                      for (var i = 0;
-                      i < MockData.players.length && i < _pinOffsets.length;
-                      i++)
-                        Marker(
-                          point: LatLng(
-                            _center.latitude + _pinOffsets[i].latitude,
-                            _center.longitude + _pinOffsets[i].longitude,
-                          ),
-                          width: 34,
-                          height: 34,
-                          child: GestureDetector(
-                            onTap: () => context.push(
-                                '${AppRoutes.playerProfile}/${MockData.players[i].id}'),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                    color: Colors.white, width: 2),
-                              ),
-                              child: const Icon(Icons.person,
-                                  color: Colors.white, size: 16),
+              MarkerLayer(
+                markers: [
+                  for (final p in players)
+                    if (p['latitude'] != null &&
+                        p['longitude'] != null)
+                      Marker(
+                        point: LatLng(
+                          (p['latitude'] as num).toDouble(),
+                          (p['longitude'] as num).toDouble(),
+                        ),
+                        width: 34,
+                        height: 34,
+                        child: GestureDetector(
+                          onTap: () => context.push(
+                              '${AppRoutes.playerProfile}/${p['id']}'),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: Colors.white, width: 2),
                             ),
+                            child: const Icon(Icons.person,
+                                color: Colors.white, size: 16),
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                ],
+              ),
                 ],
               ),
             ),
@@ -120,6 +126,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             ],
           ),
           const SizedBox(height: 16),
+
+          // Filter chips
           SizedBox(
             height: 38,
             child: ListView(
@@ -138,31 +146,110 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Text('NEARBY PLAYERS', style: AppTextStyles.headline(size: 20)),
+
+          Text(s.nearbyPlayers,
+              style: AppTextStyles.headline(size: 20)),
           const SizedBox(height: 12),
-          if (players.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Text('No players found for this sport nearby.',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.body(color: AppColors.textMuted)),
-            )
-          else
-            for (final p in players) ...[
-              PlayerTile(
-                name: p.name,
-                subtitle:
-                '${p.sport} · ${p.level} · ${p.distanceKm} km away',
-                onTap: () =>
-                    context.push('${AppRoutes.playerProfile}/${p.id}'),
-                onPing: () => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content:
-                      Text('Ping sent to ${p.name.split(' ').first}!')),
-                ),
+
+          playersAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(
+                child: CircularProgressIndicator(
+                    color: AppColors.primary),
               ),
-              const SizedBox(height: 10),
-            ],
+            ),
+            error: (e, _) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Column(
+                children: [
+                  Text('Could not load players.',
+                      textAlign: TextAlign.center,
+                      style:
+                      AppTextStyles.body(color: AppColors.textMuted)),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () =>
+                        ref.invalidate(nearbyPlayersProvider(_filter)),
+                    child: Text('TAP TO RETRY',
+                        style: AppTextStyles.label(
+                            color: AppColors.primary)),
+                  ),
+                ],
+              ),
+            ),
+            data: (players) => players.isEmpty
+                ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Text(s.noPlayersNearby,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.body(
+                      color: AppColors.textMuted)),
+            )
+                : Column(
+              children: [
+                for (final p in players)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: PlayerTile(
+                      name: p['name'] as String? ?? 'Player',
+                      pinged: ref.watch(pingedIdsProvider)
+                          .contains(p['id'] as int),
+                      subtitle: () {
+                        final sports =
+                            (p['sports'] as List<dynamic>?) ?? [];
+                        final sportName = sports.isNotEmpty
+                            ? sports[0]['sport'] as String? ?? ''
+                            : '';
+                        final dist = p['distanceKm'];
+                        final distText = dist is num
+                            ? '${dist.toStringAsFixed(1)} km away'
+                            : 'nearby';
+                        return sportName.isEmpty
+                            ? distText
+                            : '$sportName · $distText';
+                      }(),
+                      onTap: () => context.push(
+                          '${AppRoutes.playerProfile}/${p['id']}'),
+                        onPing: () async {
+                          try {
+                            final res = await ApiClient.instance.post(
+                                '/players/${p['id']}/ping',
+                                data: {'message': 'Want to play?'});
+                            final pinged =
+                                (res.data['pinged'] as bool?) ?? true;
+                            final set = ref
+                                .read(pingedIdsProvider.notifier);
+                            final current =
+                            Set<int>.from(ref.read(pingedIdsProvider));
+                            if (pinged) {
+                              current.add(p['id'] as int);
+                            } else {
+                              current.remove(p['id'] as int);
+                            }
+                            set.state = current;
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(pinged
+                                      ? 'Ping sent!'
+                                      : 'Ping removed')),
+                            );
+                          } on DioException catch (e) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(SnackBar(
+                              content: Text(e.response?.data?['error']
+                              as String? ??
+                                  'Could not send ping'),
+                            ));
+                          }
+                        },
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );

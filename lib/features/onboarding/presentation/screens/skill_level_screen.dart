@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
+import '../onboarding_data.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -42,7 +42,12 @@ class _SkillLevelScreenState extends State<SkillLevelScreen> {
       .where((s) => widget.selectedSports.contains(s))
       .toList();
 
-  void _onDone() => context.push(AppRoutes.locationSetup);
+  void _onDone() {
+    OnboardingData.sports = _levels.entries
+        .map((e) => {'sport': e.key, 'level': e.value.name})
+        .toList();
+    context.push(AppRoutes.locationSetup);
+  }
 
   @override
   Widget build(BuildContext context) {

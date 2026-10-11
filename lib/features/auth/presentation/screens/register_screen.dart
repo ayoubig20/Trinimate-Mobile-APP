@@ -1,4 +1,7 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_router.dart';
@@ -7,23 +10,35 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../../shared/widgets/secondary_button.dart';
+import '../auth_controller.dart';
 
-class RegisterScreen extends StatefulWidget {
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _cityController = TextEditingController();
+  final _countryController = TextEditingController();
+  final _phoneController = TextEditingController();
   bool _acceptedTerms = false;
   bool _loading = false;
   bool _obscure = true;
+  bool _gpsLoading = false;
+  double? _lat;
+  double? _lng;
+
+  @override
+  void initState() {
+    super.initState();
+    _autofillFromGps();
+  }
 
   @override
   void dispose() {
@@ -31,7 +46,52 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _cityController.dispose();
+    _countryController.dispose();
+    _phoneController.dispose();
     super.dispose();
+  }
+
+  /// Detect GPS position → reverse-geocode city + country via OpenStreetMap.
+  Future<void> _autofillFromGps() async {
+    setState(() => _gpsLoading = true);
+    try {
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low);
+      final res = await Dio().get(
+        'https://nominatim.openstreetmap.org/reverse',
+        queryParameters: {
+          'format': 'jsonv2',
+          'lat': pos.latitude,
+          'lon': pos.longitude,
+        },
+        options: Options(
+          headers: {'User-Agent': 'trinimate-app'},
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
+      final addr = res.data['address'] as Map<String, dynamic>? ?? {};
+      if (!mounted) return;
+      setState(() {
+        _cityController.text =
+            (addr['city'] ?? addr['town'] ?? addr['village'] ?? '')
+                .toString();
+        _countryController.text = (addr['country'] ?? '').toString();
+        _lat = pos.latitude;
+        _lng = pos.longitude;
+      });
+    } catch (_) {
+      // GPS or network failed — user types city/country manually
+    } finally {
+      if (mounted) setState(() => _gpsLoading = false);
+    }
   }
 
   Future<void> _onCreateAccount() async {
@@ -43,16 +103,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
     setState(() => _loading = true);
-    await Future<void>.delayed(const Duration(seconds: 1)); // mock signup
+    final ok = await ref.read(authControllerProvider.notifier).register(
+      name: _nameController.text.trim(),
+      email: _emailController.text,
+      password: _passwordController.text,
+      city: _cityController.text.trim(),
+      country: _countryController.text.trim(),
+      phone: _phoneController.text.trim().isEmpty
+          ? null
+          : _phoneController.text.trim(),
+      latitude: _lat,
+      longitude: _lng,
+    );
     if (!mounted) return;
     setState(() => _loading = false);
-    context.go(AppRoutes.intro);
+    if (ok) {
+      context.go(AppRoutes.intro);
+    } else {
+      final error =
+          ref.read(authControllerProvider).error ?? 'Registration failed';
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.screenBackground, // #0B0B0B
+      backgroundColor: AppColors.screenBackground,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -60,25 +138,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
               keyboardDismissBehavior:
               ScrollViewKeyboardDismissBehavior.onDrag,
               child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                constraints:
+                BoxConstraints(minHeight: constraints.maxHeight),
                 child: IntrinsicHeight(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 24,
-                    ),
+                        horizontal: 20, vertical: 24),
                     child: Form(
                       key: _formKey,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 8),
                           Center(
                             child: Image.asset(
                               'assets/images/trinimate_logo.png',
                               width: 160,
                               fit: BoxFit.contain,
                             ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "LET'S TRAIN TOGETHER !",
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.label(
+                                color: AppColors.primary),
                           ),
                           const SizedBox(height: 32),
                           AppTextField(
@@ -142,17 +226,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 16),
                           AppTextField(
                             label: 'City',
-                            hint: 'e.g. Agadir',
+                            hint: _gpsLoading
+                                ? 'Detecting your location…'
+                                : 'e.g. Agadir',
                             controller: _cityController,
                             keyboardType: TextInputType.text,
-                            textInputAction: TextInputAction.done,
-                            onSubmitted: (_) => _onCreateAccount(),
+                            textInputAction: TextInputAction.next,
                             prefixIcon: Icons.location_city_outlined,
                             validator: (value) {
                               final v = value?.trim() ?? '';
                               if (v.isEmpty) return 'City is required';
                               return null;
                             },
+                          ),
+                          const SizedBox(height: 16),
+                          AppTextField(
+                            label: 'Country',
+                            hint: 'e.g. Morocco',
+                            controller: _countryController,
+                            keyboardType: TextInputType.text,
+                            textInputAction: TextInputAction.next,
+                            prefixIcon: Icons.public_outlined,
+                          ),
+                          const SizedBox(height: 16),
+                          AppTextField(
+                            label: 'Phone (optional)',
+                            hint: 'e.g. +212 6 12 34 56 78',
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => _onCreateAccount(),
+                            prefixIcon: Icons.phone_outlined,
                           ),
                           const SizedBox(height: 14),
                           Row(
@@ -164,13 +268,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 child: Checkbox(
                                   value: _acceptedTerms,
                                   onChanged: (v) => setState(
-                                        () => _acceptedTerms = v ?? false,
-                                  ),
+                                          () => _acceptedTerms = v ?? false),
                                   activeColor: AppColors.primary,
                                   checkColor: Colors.white,
                                   side: const BorderSide(
-                                    color: AppColors.textMuted,
-                                  ),
+                                      color: AppColors.textMuted),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(4),
                                   ),
@@ -179,37 +281,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: GestureDetector(
-                                  onTap: () => setState(
-                                        () => _acceptedTerms = !_acceptedTerms,
-                                  ),
+                                  onTap: () => setState(() =>
+                                  _acceptedTerms = !_acceptedTerms),
                                   child: Text.rich(
                                     TextSpan(
                                       text: 'I agree to the ',
                                       style: AppTextStyles.body(
-                                        size: 12,
-                                        color: AppColors.textMuted,
-                                      ),
+                                          size: 12,
+                                          color: AppColors.textMuted),
                                       children: [
                                         TextSpan(
                                           text: 'Terms of Service',
-                                          style: AppTextStyles.bodyMedium(
-                                            size: 12,
-                                            color: AppColors.primary,
-                                          ),
+                                          style:
+                                          AppTextStyles.bodyMedium(
+                                              size: 12,
+                                              color:
+                                              AppColors.primary),
                                         ),
                                         TextSpan(
                                           text: ' and ',
                                           style: AppTextStyles.body(
-                                            size: 12,
-                                            color: AppColors.textMuted,
-                                          ),
+                                              size: 12,
+                                              color:
+                                              AppColors.textMuted),
                                         ),
                                         TextSpan(
                                           text: 'Privacy Policy',
-                                          style: AppTextStyles.bodyMedium(
-                                            size: 12,
-                                            color: AppColors.primary,
-                                          ),
+                                          style:
+                                          AppTextStyles.bodyMedium(
+                                              size: 12,
+                                              color:
+                                              AppColors.primary),
                                         ),
                                       ],
                                     ),
@@ -220,26 +322,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           const SizedBox(height: 22),
                           PrimaryButton(
-                            label: _loading ? 'Creating account…' : 'Create account',
+                            label: _loading
+                                ? 'Creating account…'
+                                : 'Create account',
                             onPressed: _loading ? null : _onCreateAccount,
                           ),
                           const SizedBox(height: 18),
                           Row(
                             children: [
                               const Expanded(
-                                child: Divider(color: AppColors.divider),
-                              ),
+                                  child:
+                                  Divider(color: AppColors.divider)),
                               Padding(
-                                padding:
-                                const EdgeInsets.symmetric(horizontal: 12),
-                                child: Text(
-                                  'OR',
-                                  style: AppTextStyles.label(size: 11),
-                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12),
+                                child: Text('OR',
+                                    style:
+                                    AppTextStyles.label(size: 11)),
                               ),
                               const Expanded(
-                                child: Divider(color: AppColors.divider),
-                              ),
+                                  child:
+                                  Divider(color: AppColors.divider)),
                             ],
                           ),
                           const SizedBox(height: 18),
@@ -261,18 +364,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(
-                                'Already have an account? ',
-                                style: AppTextStyles.body(
-                                    color: AppColors.textMuted),
-                              ),
+                              Text('Already have an account? ',
+                                  style: AppTextStyles.body(
+                                      color: AppColors.textMuted)),
                               GestureDetector(
                                 onTap: () => context.pop(),
-                                child: Text(
-                                  'Log in',
-                                  style: AppTextStyles.bodyMedium(
-                                      color: AppColors.primary),
-                                ),
+                                child: Text('Log in',
+                                    style: AppTextStyles.bodyMedium(
+                                        color: AppColors.primary)),
                               ),
                             ],
                           ),

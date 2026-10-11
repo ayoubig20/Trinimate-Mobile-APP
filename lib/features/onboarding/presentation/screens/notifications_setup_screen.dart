@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
-
+import '../onboarding_data.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -19,14 +19,17 @@ class _NotificationsSetupScreenState extends State<NotificationsSetupScreen> {
 
   Future<void> _enableAndFinish() async {
     setState(() => _requesting = true);
-    // Ask the OS for notification permission (Android 13+ / iOS).
     await Permission.notification.request();
     if (!mounted) return;
+    await OnboardingData.syncToBackend();   // ← add
     setState(() => _requesting = false);
     context.go(AppRoutes.discover);
   }
 
-  void _skip() => context.go(AppRoutes.discover);
+  void _skip() {
+    OnboardingData.syncToBackend();         // ← add (fire & forget)
+    context.go(AppRoutes.discover);
+  }
 
   @override
   Widget build(BuildContext context) {
