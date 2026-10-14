@@ -4,5 +4,5 @@ import '../data/community_repository.dart';
 final communityRepositoryProvider =
 Provider<CommunityRepository>((ref) => CommunityRepository());
 
-final eventsProvider = FutureProvider<List<dynamic>>(
+final eventsProvider = FutureProvider.autoDispose<List<dynamic>>(
         (ref) => ref.read(communityRepositoryProvider).events());

@@ -162,6 +162,28 @@ class SessionDetailScreen extends ConsumerWidget {
 
                 // ---- ORGANIZER VIEW ----
                 if (isOrganizer) ...[
+                  SecondaryButton(
+                    label: 'Group chat',
+                    icon: const Icon(Icons.groups_outlined,
+                        color: AppColors.text, size: 20),
+                    onPressed: () async {
+                      try {
+                        final res = await ApiClient.instance
+                            .get('/sessions/$id/chat');
+                        if (!context.mounted) return;
+                        context.push(
+                            '${AppRoutes.chatThread}/${res.data['chatId']}');
+                      } on DioException catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text(e.response?.data?['error']
+                                as String? ??
+                                    'Could not open chat')));
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
@@ -252,21 +274,23 @@ class SessionDetailScreen extends ConsumerWidget {
                 ] else ...[
                   // ---- JOINER VIEW ----
                   SecondaryButton(
-                    label: 'Message',
-                    icon: const Icon(Icons.chat_bubble_outline,
+                    label: 'Group chat',
+                    icon: const Icon(Icons.groups_outlined,
                         color: AppColors.text, size: 20),
                     onPressed: () async {
                       try {
-                        final chatId = await ref
-                            .read(chatRepositoryProvider)
-                            .openChatWith(s['createdBy'] as int);
+                        final res = await ApiClient.instance
+                            .get('/sessions/$id/chat');
                         if (!context.mounted) return;
-                        context.push('${AppRoutes.chatThread}/$chatId');
-                      } catch (_) {
+                        context.push(
+                            '${AppRoutes.chatThread}/${res.data['chatId']}');
+                      } on DioException catch (e) {
                         if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Could not open chat')));
+                            SnackBar(
+                                content: Text(e.response?.data?['error']
+                                as String? ??
+                                    'Join the session first')));
                       }
                     },
                   ),

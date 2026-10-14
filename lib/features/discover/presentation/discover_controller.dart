@@ -10,7 +10,7 @@ final pingedIdsProvider = StateProvider<Set<int>>((ref) => {});
 
 /// Nearby players: centered on me, same city, excluding me.
 final nearbyPlayersProvider =
-FutureProvider.family<List<dynamic>, String>((ref, sportFilter) async {
+FutureProvider.autoDispose.family<List<dynamic>, String>((ref, sportFilter) async {
   final meRes = await ApiClient.instance.get('/profile');
   final me = meRes.data as Map<String, dynamic>;
   final lat = (me['latitude'] as num?)?.toDouble() ?? 30.4278;

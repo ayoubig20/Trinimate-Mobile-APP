@@ -3,17 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+// delete: import '../../../../core/mock/mock_data.dart';
+import '../../../sports/presentation/sports_controller.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/mock/mock_data.dart';
-import '../../../../shared/widgets/bottom_nav_bar.dart';
 import '../../../../shared/widgets/event_card.dart';
 import '../../../../shared/widgets/location_picker.dart';
 import '../../../../shared/widgets/session_card.dart';
-import '../../../../shared/widgets/tab_scaffold.dart';
 import '../../../sessions/presentation/sessions_controller.dart';
 import '../community_controller.dart';
 
@@ -31,11 +30,12 @@ class CommunityScreen extends ConsumerWidget {
     final eventsAsync = ref.watch(eventsProvider);
     final sessionsAsync = ref.watch(sessionsListProvider);
 
-    return TabScaffold(
-      current: AppTab.community,
-      child: Stack(
-        children: [
-          ListView(
+    return Scaffold(
+      backgroundColor: AppColors.screenBackground,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            ListView(
             padding:
             const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             children: [
@@ -111,6 +111,7 @@ class CommunityScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 12),
+              Text('COMMUNITY', style: AppTextStyles.headline(size: 30)),
               eventsAsync.when(
                 loading: () => const Padding(
                   padding: EdgeInsets.all(16),
@@ -187,7 +188,8 @@ class CommunityScreen extends ConsumerWidget {
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -304,7 +306,8 @@ class CommunityScreen extends ConsumerWidget {
     final placeCtrl = TextEditingController();
     final dateCtrl = TextEditingController();
     final timeCtrl = TextEditingController();
-    String sport = MockData.sports.first;
+    final sports = ref.read(sportsProvider).value ?? const <String>[];
+    String sport = sports.isNotEmpty ? sports.first : '';
     DateTime? pickedDate;
     TimeOfDay? pickedTime;
     double? lat, lng;
@@ -341,7 +344,7 @@ class CommunityScreen extends ConsumerWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    for (final s in MockData.sports)
+                    for (final s in sports)
                       GestureDetector(
                         onTap: () => setS(() => sport = s),
                         child: Container(

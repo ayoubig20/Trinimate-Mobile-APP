@@ -21,4 +21,8 @@ class ChatRepository {
   Future<void> react(int messageId, String emoji) async =>
       _dio.post('/messages/$messageId/reactions',
           data: {'emoji': emoji});
+
+  /// Marks every message in the chat as read for the current user.
+  Future<void> markRead(int chatId) async =>
+      _dio.post('/chats/$chatId/read');
 }

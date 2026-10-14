@@ -4,10 +4,11 @@ import '../data/chat_repository.dart';
 final chatRepositoryProvider =
 Provider<ChatRepository>((ref) => ChatRepository());
 
-final chatsListProvider = FutureProvider<List<dynamic>>(
+final chatsListProvider = FutureProvider.autoDispose<List<dynamic>>(
         (ref) => ref.read(chatRepositoryProvider).chats());
 
-final messagesProvider = FutureProvider.family<List<dynamic>, int>(
+final messagesProvider =
+FutureProvider.autoDispose.family<List<dynamic>, int>(
         (ref, chatId) => ref.read(chatRepositoryProvider).messages(chatId));
 
 Future<void> sendMessage(WidgetRef ref, int chatId, String text,

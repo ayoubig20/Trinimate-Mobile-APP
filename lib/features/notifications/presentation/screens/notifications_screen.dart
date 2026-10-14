@@ -24,11 +24,10 @@ class NotificationsScreen extends ConsumerWidget {
     _ => (Icons.notifications_outlined, AppColors.textMuted),
   };
 
-  Future<void> _openChatWith(
-      BuildContext context, int userId) async {
+  Future<void> _openChatWith(BuildContext context, WidgetRef ref, int notifId, int userId) async {
+    markNotificationRead(ref, notifId); // fire & forget
     try {
-      final res =
-      await ApiClient.instance.post('/chats/with/$userId');
+      final res = await ApiClient.instance.post('/chats/with/$userId');
       if (!context.mounted) return;
       context.push('${AppRoutes.chatThread}/${res.data['chatId']}');
     } catch (_) {
@@ -62,6 +61,16 @@ class NotificationsScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 20),
+            Align(
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: () => markAllNotificationsRead(ref),
+                child: Text('MARK ALL READ',
+                    style: AppTextStyles.label(
+                        size: 11, color: AppColors.primary)),
+              ),
+            ),
+            const SizedBox(height: 12),
             notifsAsync.when(
               loading: () => const Padding(
                 padding: EdgeInsets.all(32),
@@ -107,11 +116,10 @@ class NotificationsScreen extends ConsumerWidget {
                         isUnread:
                         !(n['read'] as bool? ?? true),
                         // Tap a ping → open chat with that user
-                        onTap: (n['type'] == 'ping' &&
-                            n['refId'] != null)
+                        onTap: (n['type'] == 'ping' && n['refId'] != null)
                             ? () => _openChatWith(
-                            context, n['refId'] as int)
-                            : null,
+                            context, ref, n['id'] as int, n['refId'] as int)
+                            : () => markNotificationRead(ref, n['id'] as int),
                       ),
                     ),
                 ],

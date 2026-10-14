@@ -5,7 +5,7 @@ import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import 'bottom_nav_bar.dart';
 
-/// Adds the bottom nav bar to the 5 main tabs and switches tabs via go_router.
+/// Tab screens + bottom nav with the RAISED center ＋ (create session).
 class TabScaffold extends StatelessWidget {
   const TabScaffold({super.key, required this.current, required this.child});
 
@@ -16,8 +16,7 @@ class TabScaffold extends StatelessWidget {
     final route = switch (tab) {
       AppTab.discover => AppRoutes.discover,
       AppTab.chats => AppRoutes.chats,
-      AppTab.play => AppRoutes.createSession,
-      AppTab.community => AppRoutes.community,
+      AppTab.activities => AppRoutes.activities,
       AppTab.profile => AppRoutes.profile,
     };
     if (tab != current) context.go(route);
@@ -27,10 +26,14 @@ class TabScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.screenBackground,
-      body: SafeArea(child: child),
+      body: CreateFabOverlay(
+        onCreate: () => context.push(AppRoutes.createSession),
+        child: SafeArea(child: child),
+      ),
       bottomNavigationBar: BottomNavBar(
         current: current,
         onTap: (tab) => _onTab(context, tab),
+        onCreate: () => context.push(AppRoutes.createSession),
       ),
     );
   }

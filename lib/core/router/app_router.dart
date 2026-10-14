@@ -1,5 +1,5 @@
 import 'package:go_router/go_router.dart';
-
+import '../../features/activities/presentation/screens/my_activities_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
@@ -39,6 +39,7 @@ abstract final class AppRoutes {
   static const availabilitySetup = '/onboarding/availability';
   static const photoSetup = '/onboarding/photo';
   static const notificationsSetup = '/onboarding/notifications';
+  static const activities = '/activities';
 
 }
 
@@ -128,5 +129,10 @@ final appRouter = GoRouter(
       path: AppRoutes.notificationsSetup,
       builder: (context, state) => const NotificationsSetupScreen(),
     ),
+    GoRoute(
+      path: AppRoutes.activities,
+      builder: (context, state) => const MyActivitiesScreen(),
+    ),
+
   ],
 );

@@ -19,6 +19,11 @@ class SessionsRepository {
     double? latitude,
     double? longitude,
     bool visibleToCommunity = true,
+    int? durationMinutes,
+    String? level,
+    String? description,
+    List<String>? tags,
+    List<String>? equipment,
   }) async {
     final res = await _dio.post('/sessions', data: {
       'sport': sport,
@@ -30,10 +35,19 @@ class SessionsRepository {
       'longitude': longitude,
       'playersNeeded': playersNeeded,
       'visibleToCommunity': visibleToCommunity,
+      'durationMinutes': durationMinutes,
+      'level': level,
+      'description': description,
+      'tags': tags,
+      'equipment': equipment,
     });
     return res.data as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> join(int id) async =>
       (await _dio.post('/sessions/$id/join')).data as Map<String, dynamic>;
+
+  Future<List<dynamic>> mine(String role) async =>
+      (await _dio.get('/sessions/mine', queryParameters: {'role': role}))
+          .data as List<dynamic>;
 }

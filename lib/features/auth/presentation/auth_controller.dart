@@ -3,6 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../profile/presentation/profile_controller.dart';
 import '../data/auth_repository.dart';
+import '../../chat/presentation/chat_controller.dart';
+import '../../sessions/presentation/sessions_controller.dart';
+import '../../notifications/presentation/notifications_controller.dart';
+import '../../community/presentation/community_controller.dart';
+import '../../discover/presentation/discover_controller.dart';
 
 final authRepositoryProvider =
 Provider<AuthRepository>((ref) => AuthRepository());
@@ -100,5 +105,17 @@ class AuthController extends StateNotifier<AuthState> {
     await _tokens.clear();
     _ref.invalidate(currentUserProvider);
     state = const AuthState(status: AuthStatus.unauthenticated);
+  }
+  void _resetUserState() {
+    _ref.invalidate(currentUserProvider);
+    _ref.invalidate(chatsListProvider);
+    _ref.invalidate(messagesProvider);       // invalidating a family clears every instance
+    _ref.invalidate(sessionsListProvider);
+    _ref.invalidate(sessionDetailProvider);
+    _ref.invalidate(participantsProvider);
+    _ref.invalidate(notificationsProvider);
+    _ref.invalidate(eventsProvider);
+    _ref.invalidate(nearbyPlayersProvider);
+    _ref.invalidate(pingedIdsProvider);
   }
 }

@@ -58,13 +58,16 @@ class ChatListScreen extends ConsumerWidget {
                     padding: const EdgeInsets.only(bottom: 10),
                     child: _ChatRow(
                       name: c['peerName'] as String,
-                      lastMessage:
-                      (c['lastMessage'] as String).isEmpty
+                      imageUrl: c['peerAvatarUrl'] as String?,
+                      lastMessage: (c['lastMessage'] as String).isEmpty
                           ? 'Say hello!'
                           : c['lastMessage'] as String,
                       time: _timeLabel(c['lastTime'] as int),
-                      onTap: () => context.push(
-                          '${AppRoutes.chatThread}/${c['id']}'),
+                      unread: c['unread'] as bool? ?? false,          // NEW
+                      onTap: () async {                               // CHANGED
+                        await context.push('${AppRoutes.chatThread}/${c['id']}');
+                        ref.invalidate(chatsListProvider);            // refresh when you come back
+                      },
                     ),
                   ),
               ],
@@ -81,11 +84,15 @@ class _ChatRow extends StatelessWidget {
       {required this.name,
         required this.lastMessage,
         required this.time,
-        required this.onTap});
+        required this.unread,
+        required this.onTap,
+        this.imageUrl});
 
   final String name;
+  final String? imageUrl;
   final String lastMessage;
   final String time;
+  final bool unread;
   final VoidCallback onTap;
 
   @override
@@ -100,7 +107,7 @@ class _ChatRow extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              PlayerAvatar(name: name),
+              PlayerAvatar(name: name, imageUrl: imageUrl),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -112,14 +119,34 @@ class _ChatRow extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.body(
-                            size: 12, color: AppColors.textMuted)),
+                            size: 12,
+                            color: unread
+                                ? AppColors.text
+                                : AppColors.textMuted)),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              Text(time,
-                  style: AppTextStyles.body(
-                      size: 11, color: AppColors.textMuted)),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(time,
+                      style: AppTextStyles.body(
+                          size: 11, color: AppColors.textMuted)),
+                  if (unread) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
         ),
